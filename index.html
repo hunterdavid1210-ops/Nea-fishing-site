@@ -8,35 +8,90 @@
 <style>
 body {
     margin: 0;
-    font-family: Arial;
-    background: #071a24;
-    color: white;
+    font-family: system-ui, Arial, sans-serif;
+    background: linear-gradient(180deg, #061a22, #041017);
+    color: #ffffff;
 }
 
+/* HEADER */
 header {
     background: #0e5c66;
-    padding: 18px;
+    padding: 22px 15px;
     text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
+header h1 {
+    margin: 0;
+    font-size: 22px;
+}
+
+header p {
+    margin: 5px 0 0;
+    opacity: 0.85;
+    font-size: 13px;
+}
+
+/* LAYOUT */
 .container {
-    max-width: 800px;
+    max-width: 850px;
     margin: auto;
     padding: 15px;
 }
 
+/* CARDS */
 .card {
-    background: #123845;
-    padding: 15px;
-    margin: 10px 0;
-    border-radius: 10px;
+    background: rgba(18, 56, 69, 0.95);
+    padding: 16px;
+    margin: 12px 0;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.05);
 }
 
-.good { color: #2ecc71; }
-.warn { color: #f1c40f; }
-.bad { color: #ff6b6b; }
+.card h2 {
+    margin-top: 0;
+    font-size: 16px;
+    color: #cfefff;
+}
 
-.small { font-size: 12px; opacity: 0.8; }
+/* BITE SCORE */
+#biteScore {
+    font-size: 42px;
+    margin: 5px 0;
+}
+
+#biteText {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+/* TREND STYLES */
+.trend-up { color: #2ecc71; font-weight: bold; }
+.trend-down { color: #ff6b6b; font-weight: bold; }
+.trend-flat { color: #f1c40f; font-weight: bold; }
+
+.small {
+    font-size: 12px;
+    opacity: 0.75;
+}
+
+/* LINKS */
+a {
+    color: #2ecc71;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* MOBILE TWEAKS */
+@media (max-width: 600px) {
+    #biteScore {
+        font-size: 34px;
+    }
+}
 </style>
 </head>
 
@@ -44,7 +99,7 @@ header {
 
 <header>
 <h1>🎣 NEA Fishing Intelligence</h1>
-<p>Live River Levels (USGS + USACE)</p>
+<p>Live River Levels • Bite Forecast • St. Francis & Mississippi</p>
 </header>
 
 <div class="container">
@@ -52,11 +107,11 @@ header {
 <!-- BITE -->
 <div class="card">
 <h2>🐟 Catfish Bite Rating</h2>
-<h1 id="biteScore">Loading...</h1>
-<p id="biteText"></p>
+<div id="biteScore">--</div>
+<div id="biteText">Loading...</div>
 </div>
 
-<!-- WATER LEVELS -->
+<!-- RIVERS -->
 <div class="card">
 <h2>🌊 Live River Levels</h2>
 
@@ -65,57 +120,62 @@ header {
 
 <br>
 
-<p><b>St. Francis River (Lake City)</b></p>
+<p><b>St. Francis River</b></p>
 <h3 id="stfrancis">Loading...</h3>
-
-<br>
-
-<p><b>Tulot (USACE SF126)</b></p>
-<h3 id="tulot">USACE Live Gauge (link-based)</h3>
-<p class="small">Cannot be reliably scraped in-browser. See RiverGages site for live reading.</p>
 
 </div>
 
-<!-- LINK -->
+<!-- TRENDS EXPLAINED -->
 <div class="card">
-<h2>🔗 Live Tulot Gauge</h2>
-<p>
-<a href="https://rivergages.mvr.usace.army.mil/WaterControl/stationinfo2.cfm?sid=SF126" target="_blank" style="color:#2ecc71;">
-Open Tulot Live Gauge
+<h2>📊 River Movement</h2>
+<p>Understanding water movement:</p>
+<ul>
+<li class="trend-up">⬆ Rising = fish move shallow (BEST bite trigger)</li>
+<li class="trend-down">⬇ Falling = fish go deep (slower bite)</li>
+<li class="trend-flat">➖ Stable = consistent feeding</li>
+</ul>
+</div>
+
+<!-- MISSISSIPPI LINK -->
+<div class="card">
+<h2>🔗 Mississippi Live Gauge</h2>
+<a href="https://waterdata.usgs.gov/monitoring-location/07032000/" target="_blank">
+Open Official USGS Gauge
 </a>
-</p>
 </div>
 
 </div>
 
 <script>
 
-// ----------------------
-// REAL USGS STATIONS
-// ----------------------
-const MISSISSIPPI = "07032000"; // Osceola corrected
+const MISSISSIPPI = "07032000";
 const ST_FRANCIS = "07040100";
 
-// ----------------------
-// GET USGS DATA
-// ----------------------
+let lastMS = null;
+let lastST = null;
+
 async function getLevel(site) {
     try {
         const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${site}&parameterCd=00065`;
         const res = await fetch(url);
         const data = await res.json();
 
-        return parseFloat(
-            data.value.timeSeries[0].values[0].value[0].value
-        );
+        return parseFloat(data.value.timeSeries[0].values[0].value[0].value);
     } catch {
         return null;
     }
 }
 
-// ----------------------
-// BITE ENGINE
-// ----------------------
+function trend(current, prev) {
+    if (!current || !prev) return "➖ Stable";
+
+    const diff = current - prev;
+
+    if (diff > 0.05) return "⬆ Rising";
+    if (diff < -0.05) return "⬇ Falling";
+    return "➖ Stable";
+}
+
 function bite(st, ms) {
 
     let score = 65;
@@ -123,12 +183,11 @@ function bite(st, ms) {
     const hour = new Date().getHours();
     if (hour >= 18 || hour <= 6) score += 15;
 
-    if (st && ms) {
-        if (Math.abs(st - ms) > 2) score += 10;
+    if (st && ms && Math.abs(st - ms) > 2) {
+        score += 10;
     }
 
     let text = "Moderate Bite";
-
     if (score >= 85) text = "🔥 HOT NIGHT BITE";
     else if (score >= 70) text = "👍 GOOD BITE";
     else text = "😐 SLOW";
@@ -137,19 +196,24 @@ function bite(st, ms) {
     document.getElementById("biteText").innerText = text;
 }
 
-// ----------------------
-// RUN
-// ----------------------
 async function run() {
 
     const ms = await getLevel(MISSISSIPPI);
     const st = await getLevel(ST_FRANCIS);
 
-    document.getElementById("mississippi").innerText =
-        ms ? ms.toFixed(2) + " ft" : "No Data";
+    const msTrend = trend(ms, lastMS);
+    const stTrend = trend(st, lastST);
 
-    document.getElementById("stfrancis").innerText =
-        st ? st.toFixed(2) + " ft" : "No Data";
+    document.getElementById("mississippi").innerHTML =
+        (ms ? ms.toFixed(2) + " ft" : "No Data") +
+        "<br><span class='small'>" + msTrend + "</span>";
+
+    document.getElementById("stfrancis").innerHTML =
+        (st ? st.toFixed(2) + " ft" : "No Data") +
+        "<br><span class='small'>" + stTrend + "</span>";
+
+    lastMS = ms;
+    lastST = st;
 
     bite(st, ms);
 }
