@@ -44,12 +44,12 @@ header {
 
 <header>
 <h1>🎣 NEA Fishing Intelligence</h1>
-<p>Live USGS Water Levels + Catfish Forecast</p>
+<p>Live River Levels (USGS + USACE)</p>
 </header>
 
 <div class="container">
 
-<!-- BITE SCORE -->
+<!-- BITE -->
 <div class="card">
 <h2>🐟 Catfish Bite Rating</h2>
 <h1 id="biteScore">Loading...</h1>
@@ -58,30 +58,32 @@ header {
 
 <!-- WATER LEVELS -->
 <div class="card">
-<h2>🌊 Live River Levels (USGS)</h2>
-
-<p><b>St. Francis River</b></p>
-<h3 id="stfrancis">Loading...</h3>
-
-<br>
+<h2>🌊 Live River Levels</h2>
 
 <p><b>Mississippi River (Osceola)</b></p>
 <h3 id="mississippi">Loading...</h3>
 
-<p class="small">
-Real-time USGS stream gauge data (stable & official)
-</p>
+<br>
+
+<p><b>St. Francis River (Lake City)</b></p>
+<h3 id="stfrancis">Loading...</h3>
+
+<br>
+
+<p><b>Tulot (USACE SF126)</b></p>
+<h3 id="tulot">USACE Live Gauge (link-based)</h3>
+<p class="small">Cannot be reliably scraped in-browser. See RiverGages site for live reading.</p>
+
 </div>
 
-<!-- TIPS -->
+<!-- LINK -->
 <div class="card">
-<h2>🎯 Fishing Conditions</h2>
-<ul>
-<li>Rising water = fish move shallow</li>
-<li>Falling water = deep holes & bends</li>
-<li>Night = peak catfish feeding time</li>
-<li>Stable water = best consistent bite</li>
-</ul>
+<h2>🔗 Live Tulot Gauge</h2>
+<p>
+<a href="https://rivergages.mvr.usace.army.mil/WaterControl/stationinfo2.cfm?sid=SF126" target="_blank" style="color:#2ecc71;">
+Open Tulot Live Gauge
+</a>
+</p>
 </div>
 
 </div>
@@ -89,17 +91,13 @@ Real-time USGS stream gauge data (stable & official)
 <script>
 
 // ----------------------
-// REAL USGS GAGES (WORKING)
+// REAL USGS STATIONS
 // ----------------------
-
-// St. Francis River near Lake City / NEA system
+const MISSISSIPPI = "07032000"; // Osceola corrected
 const ST_FRANCIS = "07040100";
 
-// Mississippi River at Osceola
-const MISSISSIPPI = "07029180";
-
 // ----------------------
-// GET USGS WATER LEVEL
+// GET USGS DATA
 // ----------------------
 async function getLevel(site) {
     try {
@@ -118,17 +116,15 @@ async function getLevel(site) {
 // ----------------------
 // BITE ENGINE
 // ----------------------
-function biteScore(st, ms) {
+function bite(st, ms) {
 
     let score = 65;
 
     const hour = new Date().getHours();
-
     if (hour >= 18 || hour <= 6) score += 15;
 
     if (st && ms) {
-        const diff = Math.abs(st - ms);
-        if (diff > 2) score += 10;
+        if (Math.abs(st - ms) > 2) score += 10;
     }
 
     let text = "Moderate Bite";
@@ -142,20 +138,20 @@ function biteScore(st, ms) {
 }
 
 // ----------------------
-// MAIN LOOP
+// RUN
 // ----------------------
 async function run() {
 
-    const st = await getLevel(ST_FRANCIS);
     const ms = await getLevel(MISSISSIPPI);
-
-    document.getElementById("stfrancis").innerText =
-        st ? st.toFixed(2) + " ft" : "No Data";
+    const st = await getLevel(ST_FRANCIS);
 
     document.getElementById("mississippi").innerText =
         ms ? ms.toFixed(2) + " ft" : "No Data";
 
-    biteScore(st, ms);
+    document.getElementById("stfrancis").innerText =
+        st ? st.toFixed(2) + " ft" : "No Data";
+
+    bite(st, ms);
 }
 
 run();
