@@ -44,7 +44,7 @@ header {
 
 <header>
 <h1>🎣 NEA Fishing Intelligence</h1>
-<p>St. Francis River + Horseshoe Lake conditions</p>
+<p>Live River Levels + Catfish Bite Forecast</p>
 </header>
 
 <div class="container">
@@ -52,30 +52,35 @@ header {
 <!-- BITE SCORE -->
 <div class="card">
 <h2>🐟 Catfish Bite Rating</h2>
-<h1 id="biteScore">Calculating...</h1>
+<h1 id="biteScore">Loading...</h1>
 <p id="biteText"></p>
 </div>
 
-<!-- WATER SYSTEMS -->
+<!-- RIVERS -->
 <div class="card">
-<h2>🌊 Water Systems</h2>
+<h2>🌊 Live River Levels</h2>
 
-<p>St. Francis River (Tulot / SF126): <span class="good">Active</span></p>
-<p>Horseshoe Lake (Mississippi backwater system): <span class="good">Seasonal stability</span></p>
+<p><b>St. Francis River (Tulot area)</b></p>
+<h3 id="stfrancis">Loading...</h3>
+
+<br>
+
+<p><b>Mississippi River (Osceola area)</b></p>
+<h3 id="mississippi">Loading...</h3>
 
 <p class="small">
-Backwater lakes = slower current, better for bait soaking and shallow catfish
+Real-time USGS stream gauge data
 </p>
 </div>
 
 <!-- FISHING TIPS -->
 <div class="card">
-<h2>🎯 Fishing Pattern Guide</h2>
+<h2>🎯 Current Conditions Guide</h2>
 <ul>
-<li><b>St. Francis River:</b> Wood + current seams = flatheads</li>
-<li><b>Horseshoe Lake:</b> shallow flats = channel cats + early spring bite</li>
-<li>Night fishing is best across both systems</li>
-<li>Cut shad = best overall bait</li>
+<li>Rising water = fish move shallow into timber & edges</li>
+<li>Falling water = deep holes, bends, outside current seams</li>
+<li>Night = peak catfish feeding window</li>
+<li>Cut shad = top bait for blue + channel cats</li>
 </ul>
 </div>
 
@@ -84,19 +89,42 @@ Backwater lakes = slower current, better for bait soaking and shallow catfish
 <script>
 
 // ----------------------
-// BITE ENGINE
+// LIVE WATER LEVELS (USGS)
 // ----------------------
-function updateBite() {
 
-    let score = 70;
+// St. Francis River (general NEA gauge)
+const ST_FRANCIS_SITE = "07040100";
+
+// Mississippi River at/near Osceola area
+const MISSISSIPPI_SITE = "07029180";
+
+async function getLevel(site) {
+    try {
+        const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${site}&parameterCd=00065`;
+        const res = await fetch(url);
+        const data = await res.json();
+        return parseFloat(data.value.timeSeries[0].values[0].value[0].value);
+    } catch {
+        return null;
+    }
+}
+
+// ----------------------
+// UPDATE DISPLAY
+// ----------------------
+function biteScore(st, ms) {
+
+    let score = 65;
 
     const hour = new Date().getHours();
 
     // night boost
     if (hour >= 18 || hour <= 6) score += 15;
 
-    // Horseshoe Lake bonus (stable backwater system)
-    score += 5;
+    // river movement boost
+    if (st && ms) {
+        if (Math.abs(st - ms) > 3) score += 10;
+    }
 
     let text = "Moderate Bite";
 
@@ -108,10 +136,27 @@ function updateBite() {
     document.getElementById("biteText").innerText = text;
 }
 
-updateBite();
-setInterval(updateBite, 60000);
+// ----------------------
+// MAIN RUN
+// ----------------------
+async function run() {
+
+    const st = await getLevel(ST_FRANCIS_SITE);
+    const ms = await getLevel(MISSISSIPPI_SITE);
+
+    document.getElementById("stfrancis").innerText =
+        st ? st + " ft" : "No Data";
+
+    document.getElementById("mississippi").innerText =
+        ms ? ms + " ft" : "No Data";
+
+    biteScore(st, ms);
+}
+
+run();
+setInterval(run, 300000);
 
 </script>
 
 </body>
-</html>g
+</html>
