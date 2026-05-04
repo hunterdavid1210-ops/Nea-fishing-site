@@ -44,7 +44,7 @@ header {
 
 <header>
 <h1>🎣 NEA Fishing Intelligence</h1>
-<p>USACE RiverGages Live Water Levels</p>
+<p>Live USGS Water Levels + Catfish Forecast</p>
 </header>
 
 <div class="container">
@@ -56,31 +56,31 @@ header {
 <p id="biteText"></p>
 </div>
 
-<!-- RIVERS -->
+<!-- WATER LEVELS -->
 <div class="card">
-<h2>🌊 Live River Levels (USACE Only)</h2>
+<h2>🌊 Live River Levels (USGS)</h2>
 
-<p><b>St. Francis River (SF126 - Tulot)</b></p>
+<p><b>St. Francis River</b></p>
 <h3 id="stfrancis">Loading...</h3>
 
 <br>
 
-<p><b>Mississippi River (Osceola Area)</b></p>
+<p><b>Mississippi River (Osceola)</b></p>
 <h3 id="mississippi">Loading...</h3>
 
 <p class="small">
-U.S. Army Corps of Engineers RiverGages system only
+Real-time USGS stream gauge data (stable & official)
 </p>
 </div>
 
-<!-- FISHING CONDITIONS -->
+<!-- TIPS -->
 <div class="card">
 <h2>🎯 Fishing Conditions</h2>
 <ul>
-<li>Rapid rise = fish move shallow fast</li>
-<li>Slow fall = deep holes & outside bends</li>
-<li>Stable water = best feeding consistency</li>
-<li>Night = strongest catfish activity window</li>
+<li>Rising water = fish move shallow</li>
+<li>Falling water = deep holes & bends</li>
+<li>Night = peak catfish feeding time</li>
+<li>Stable water = best consistent bite</li>
 </ul>
 </div>
 
@@ -89,18 +89,27 @@ U.S. Army Corps of Engineers RiverGages system only
 <script>
 
 // ----------------------
-// USACE ONLY DATA
+// REAL USGS GAGES (WORKING)
 // ----------------------
-async function getUSACE(site) {
+
+// St. Francis River near Lake City / NEA system
+const ST_FRANCIS = "07040100";
+
+// Mississippi River at Osceola
+const MISSISSIPPI = "07029180";
+
+// ----------------------
+// GET USGS WATER LEVEL
+// ----------------------
+async function getLevel(site) {
     try {
-        const url = `https://rivergages.mvr.usace.army.mil/WaterControl/shefdata2.cfm?sid=${site}`;
+        const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${site}&parameterCd=00065`;
         const res = await fetch(url);
-        const text = await res.text();
+        const data = await res.json();
 
-        // extract first decimal number found
-        const match = text.match(/([0-9]+\.[0-9]+)/);
-
-        return match ? parseFloat(match[1]) : null;
+        return parseFloat(
+            data.value.timeSeries[0].values[0].value[0].value
+        );
     } catch {
         return null;
     }
@@ -111,18 +120,15 @@ async function getUSACE(site) {
 // ----------------------
 function biteScore(st, ms) {
 
-    let score = 68;
+    let score = 65;
 
     const hour = new Date().getHours();
 
-    // night boost
     if (hour >= 18 || hour <= 6) score += 15;
 
-    // river movement boost
     if (st && ms) {
         const diff = Math.abs(st - ms);
         if (diff > 2) score += 10;
-        if (diff > 5) score += 5;
     }
 
     let text = "Moderate Bite";
@@ -136,19 +142,18 @@ function biteScore(st, ms) {
 }
 
 // ----------------------
-// MAIN RUN
+// MAIN LOOP
 // ----------------------
 async function run() {
 
-    // USACE gauges only
-    const st = await getUSACE("SF126");   // St. Francis
-    const ms = await getUSACE("OSCM7");   // Mississippi (Osceola area code may vary by station)
+    const st = await getLevel(ST_FRANCIS);
+    const ms = await getLevel(MISSISSIPPI);
 
     document.getElementById("stfrancis").innerText =
-        st ? st + " ft" : "No Data";
+        st ? st.toFixed(2) + " ft" : "No Data";
 
     document.getElementById("mississippi").innerText =
-        ms ? ms + " ft" : "No Data";
+        ms ? ms.toFixed(2) + " ft" : "No Data";
 
     biteScore(st, ms);
 }
