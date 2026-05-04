@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>NEA Fishing Intelligence</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
 <style>
 body {
     margin: 0;
@@ -22,7 +20,7 @@ header {
 }
 
 .container {
-    max-width: 1000px;
+    max-width: 800px;
     margin: auto;
     padding: 15px;
 }
@@ -31,17 +29,6 @@ header {
     background: #123845;
     padding: 15px;
     margin: 10px 0;
-    border-radius: 10px;
-}
-
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 10px;
-}
-
-#map {
-    height: 400px;
     border-radius: 10px;
 }
 
@@ -56,111 +43,75 @@ header {
 <body>
 
 <header>
-<h1>🎣 NEA Fishing Intelligence Dashboard</h1>
-<p>Live rivers • Bite predictions • Hotspots</p>
+<h1>🎣 NEA Fishing Intelligence</h1>
+<p>St. Francis River + Horseshoe Lake conditions</p>
 </header>
 
 <div class="container">
 
+<!-- BITE SCORE -->
 <div class="card">
 <h2>🐟 Catfish Bite Rating</h2>
-<h1 id="biteScore">Loading...</h1>
+<h1 id="biteScore">Calculating...</h1>
 <p id="biteText"></p>
 </div>
 
+<!-- WATER SYSTEMS -->
 <div class="card">
-<h2>🌊 Water Levels</h2>
+<h2>🌊 Water Systems</h2>
 
-<div class="grid">
+<p>St. Francis River (Tulot / SF126): <span class="good">Active</span></p>
+<p>Horseshoe Lake (Mississippi backwater system): <span class="good">Seasonal stability</span></p>
+
+<p class="small">
+Backwater lakes = slower current, better for bait soaking and shallow catfish
+</p>
+</div>
+
+<!-- FISHING TIPS -->
 <div class="card">
-<h3>Mississippi (Osceola)</h3>
-<p id="osceola">Loading...</p>
-</div>
-
-<div class="card">
-<h3>Arkansas City Trend</h3>
-<p id="arkcity">Loading...</p>
-</div>
-
-<div class="card">
-<h3>St. Francis (Tulot)</h3>
-<p id="tulot">USACE SF126 Active</p>
-</div>
-</div>
-
-<p class="small">Live USGS + USACE data</p>
-</div>
-
-<div class="card">
-<h2>🗺️ Fishing Hotspots</h2>
-<div id="map"></div>
+<h2>🎯 Fishing Pattern Guide</h2>
+<ul>
+<li><b>St. Francis River:</b> Wood + current seams = flatheads</li>
+<li><b>Horseshoe Lake:</b> shallow flats = channel cats + early spring bite</li>
+<li>Night fishing is best across both systems</li>
+<li>Cut shad = best overall bait</li>
+</ul>
 </div>
 
 </div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
 
-const osceolaSite = "07029180";
-const arkSite = "07265450";
+// ----------------------
+// BITE ENGINE
+// ----------------------
+function updateBite() {
 
-async function getUSGS(site) {
-  try {
-    const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${site}&parameterCd=00065`;
-    const res = await fetch(url);
-    const data = await res.json();
-    return parseFloat(data.value.timeSeries[0].values[0].value[0].value);
-  } catch {
-    return null;
-  }
+    let score = 70;
+
+    const hour = new Date().getHours();
+
+    // night boost
+    if (hour >= 18 || hour <= 6) score += 15;
+
+    // Horseshoe Lake bonus (stable backwater system)
+    score += 5;
+
+    let text = "Moderate Bite";
+
+    if (score >= 85) text = "🔥 HOT NIGHT BITE";
+    else if (score >= 70) text = "👍 GOOD BITE";
+    else text = "😐 SLOW";
+
+    document.getElementById("biteScore").innerText = score + "/100";
+    document.getElementById("biteText").innerText = text;
 }
 
-async function load() {
-
-  const os = await getUSGS(osceolaSite);
-  const ar = await getUSGS(arkSite);
-
-  document.getElementById("osceola").innerText = os ? os + " ft" : "No Data";
-  document.getElementById("arkcity").innerText = ar ? ar + " ft" : "No Data";
-
-  let score = 60;
-  let text = "Moderate Bite";
-
-  if (os && os > 15 && os < 25) score += 20;
-  if (ar && os && os > ar) score += 10;
-
-  if (score >= 80) text = "🔥 HOT BITE";
-  else if (score >= 65) text = "👍 GOOD BITE";
-  else text = "😐 SLOW";
-
-  document.getElementById("biteScore").innerText = score + "/100";
-  document.getElementById("biteText").innerText = text;
-}
-
-load();
-setInterval(load, 300000);
-
-// MAP
-const map = L.map('map').setView([35.85, -89.9], 8);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  attribution:'&copy; OpenStreetMap'
-}).addTo(map);
-
-const spots = [
-  ["Osceola Dikes", 35.70, -89.99, "Blue cats on seams"],
-  ["St Francis Timber", 35.62, -90.25, "Flatheads at night"],
-  ["Marked Tree", 35.53, -90.43, "Channel cats"],
-  ["Reelfoot Lake", 36.40, -89.35, "Crappie & bass"]
-];
-
-spots.forEach(s=>{
-  L.marker([s[1], s[2]]).addTo(map)
-    .bindPopup(`<b>${s[0]}</b><br>${s[3]}`);
-});
+updateBite();
+setInterval(updateBite, 60000);
 
 </script>
 
 </body>
-</html>
+</html>g
